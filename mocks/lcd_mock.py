@@ -215,7 +215,7 @@ class LCD(Widget):
             )
 
     @mainthread
-    def draw_qr_code_binary(self, offset_y, code_bin, max_width, dark_color=COLOR_BLACK, light_color=COLOR_WHITE, bg_color=COLOR_BLACK):
+    def draw_qr_code_binary(self,ofsset_x, offset_y, code_bin, max_width, dark_color=COLOR_BLACK, light_color=COLOR_WHITE, bg_color=COLOR_BLACK):
         starting_size = int(math.sqrt(len(code_bin) * 8))
         block_size_divisor = starting_size + 2;  # adds 2 to create room for a 1 block border
         # scale is how many pixels per block

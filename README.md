@@ -1,5 +1,11 @@
+# About Krux App
+Krux Android app is intended for learning about Krux and Bitcoin air-gapped transactions. Due to many possible vulnerabilities inherent in phones such as the lack of control of the OS, libraries and hardware peripherals, Krux app should NOT be used to manage wallets containing savings or important keys and mnemonics. For that, a dedicated device is recommended.
+
+[Learn more about Krux](https://selfcustody.github.io/krux/getting-started/)
+[Krux main repository](https://github.com/selfcustody/krux)
+
 # Running Krux on your PC Through Kivy
-This was the steps to run and build Krux APK on a fresh Ubuntu environment
+These are the steps to run and build Krux APK
 
 ## Install Poetry
 This project manage dependencies through Poetry, install it accordingly to recommended instructions
@@ -23,4 +29,10 @@ Just install Docker and run:
 ```
 android_build.sh
 ```
+
 The resulting apk will be available in `bin` folder
+
+# TODO
+- Better structure/link submodules
+- Improve documentation
+- Reduce code customizations for Android
