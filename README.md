@@ -1,6 +1,9 @@
 # About Krux App
 Krux Android app is intended for learning about Krux and Bitcoin air-gapped transactions. Due to many possible vulnerabilities inherent in phones such as the lack of control of the OS, libraries and hardware peripherals, Krux app should NOT be used to manage wallets containing savings or important keys and mnemonics. For that, a dedicated device is recommended.
 
+## Warning!
+The app code is poorly tested and maintained. APK signatures and authorship are not yet managed. Users may need to delete older versions to be able to update, and it's very likely stored information, like settings and encrypted mnemonics will be lost on updates.
+
 [Learn more about Krux](https://selfcustody.github.io/krux/getting-started/)
 
 [Krux main repository](https://github.com/selfcustody/krux)

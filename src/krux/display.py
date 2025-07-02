@@ -33,7 +33,9 @@ FONT_WIDTH, FONT_HEIGHT = board.config["krux"]["display"]["font"]
 FONT_WIDTH_WIDE, FONT_HEIGHT_WIDE = board.config["krux"]["display"]["font_wide"]
 PORTRAIT, LANDSCAPE = [2, 3] if kboard.is_cube else [1, 2]
 QR_DARK_COLOR, QR_LIGHT_COLOR = [16904, 61307] if kboard.is_m5stickv else [0, 6342]
-TOTAL_LINES = board.config["lcd"]["width"] // FONT_HEIGHT
+# Custom for Android
+FONT_HEIGHT = lcd.font_size  # Replace with lcd.font_size for Android
+TOTAL_LINES = lcd._height() // FONT_HEIGHT
 BOTTOM_LINE = (TOTAL_LINES - 1) * FONT_HEIGHT
 if kboard.has_minimal_display:
     BOTTOM_PROMPT_LINE = BOTTOM_LINE - DEFAULT_PADDING
@@ -338,6 +340,7 @@ class Display:
         
         # Custom for Android
         if FONT_HEIGHT != lcd.font_size:
+            print("Updating font sizes")
             update_font_sizes()
 
     def outline(self, x, y, width, height, color=theme.fg_color):
