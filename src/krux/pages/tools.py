@@ -135,8 +135,11 @@ class Tools(Page):
             if DatumToolMenu(self.ctx).run() == MENU_EXIT:
                 break
 
-        sys.modules.pop("krux.pages.datum_tool")
-        del sys.modules["krux.pages"].datum_tool
+        try:  # Android custom
+            sys.modules.pop("krux.pages.datum_tool")
+            del sys.modules["krux.pages"].datum_tool
+        except KeyError:
+            pass
         return MENU_CONTINUE
 
     # def create_qr(self):

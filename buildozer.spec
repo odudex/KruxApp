@@ -1,16 +1,17 @@
 [app]
 
 # (str) Title of your application
-title = Krux
+title = KruxApp
 
 # (str) Package name
 package.name = krux
 
 # (str) Package domain (needed for android/ios packaging)
-package.domain = org.example
+package.domain = selfcustody.github.io
 
 # (str) Source code where the main.py live
 source.dir = .
+source.main = main.py
 
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,ttf
@@ -29,7 +30,7 @@ source.include_exts = py,png,jpg,kv,atlas,ttf
 #source.exclude_patterns = license,images/*/*.jpg
 
 # (str) Application versioning (method 1)
-version = 23.04.05
+version = 25.05.0
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]

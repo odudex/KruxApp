@@ -20,6 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+from kivy.storage.jsonstore import JsonStore  # Custom for Android
 import ujson as json
 import hashlib
 from krux import kef
@@ -133,20 +134,27 @@ class MnemonicStorage:
             except:
                 return False
         else:
+            #Custom for Android
             try:
-                # load current MNEMONICS_FILE
-                with open(FLASH_PATH_STR % MNEMONICS_FILE, "r") as f:
-                    mnemonics = json.loads(f.read())
-            except:
-                pass
-            try:
-                # save the new MNEMONICS_FILE
-                with open(FLASH_PATH_STR % MNEMONICS_FILE, "w") as f:
-                    mnemonics[mnemonic_id] = {"b64_kef": b64_kef}
-                    f.write(json.dumps(mnemonics))
+                self.stored.put(mnemonic_id, b64_kef = b64_kef)
             except:
                 return False
-        return True
+            return True
+        
+        #     try:
+        #         # load current MNEMONICS_FILE
+        #         with open(FLASH_PATH_STR % MNEMONICS_FILE, "r") as f:
+        #             mnemonics = json.loads(f.read())
+        #     except:
+        #         pass
+        #     try:
+        #         # save the new MNEMONICS_FILE
+        #         with open(FLASH_PATH_STR % MNEMONICS_FILE, "w") as f:
+        #             mnemonics[mnemonic_id] = {"b64_kef": b64_kef}
+        #             f.write(json.dumps(mnemonics))
+        #     except:
+        #         return False
+        # return True
 
     def del_mnemonic(self, mnemonic_id, sd_card=False):
         """Remove an entry from encrypted mnemonics file"""

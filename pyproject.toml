@@ -1,39 +1,12 @@
 [tool.poetry]
-name = "kruxapp"
+name = "main"
 version = "25.05.beta7"
 description = "Krux Android app for learning about Bitcoin air-gapped transactions"
-authors = ["Krux Team <contact@krux.org>"]
-maintainers = ["Krux Team <contact@krux.org>"]
+authors = ["Krux Contributors"]
 readme = "README.md"
 license = "MIT"
-homepage = "https://selfcustody.com/krux"
-repository = "https://github.com/selfcustody/krux"
-keywords = ["bitcoin", "kivy", "android", "air-gapped", "wallet"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Environment :: X11 Applications :: Kivy",
-    "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
-    "Natural Language :: English",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Topic :: Security :: Cryptography",
-]
-packages = [
-    { include = "src" },
-    { include = "mocks" },
-    { include = "camerax_provider" },
-]
-include = [
-    "buildozer.spec",
-    "*.ttf",
-    "data/*.png",
-    "data/*.ico",
-]
+homepage = "https://selfcustody.github.io/krux/getting-started/"
+repository = "https://github.com/odudex/KruxApp"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
@@ -46,6 +19,8 @@ pycryptodome = "^3.20.0"
 pillow = "^10.0.0"
 numpy = "^1.24.0"
 opencv-python = "^4.11.0.86"
+setuptools = "^80.9.0"
+cython = "^3.1.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"
@@ -64,27 +39,3 @@ krux = "main:main"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.black]
-line-length = 88
-target-version = ["py38"]
-include = '''
-/(
-  \.pyi?|
-  /src/|
-  /mocks/|
-  /camerax_provider/
-)$
-'''
-
-[tool.flake8]
-max-line-length = 88
-extend-ignore = ["E203", "W503"]
-exclude = [".git", "__pycache__", "build", "dist", ".venv"]
-
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true
-disallow_untyped_defs = false
