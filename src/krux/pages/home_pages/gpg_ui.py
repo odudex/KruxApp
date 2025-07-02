@@ -139,7 +139,7 @@ class GPG(Page):
             return
 
         signature = secp256k1.ecdsa_sign(message_hash, self.private_key)
-        encoded_sig = base_encode(signature, 64).strip().decode()
+        encoded_sig = base_encode(signature, 64)
         self._display_signature(encoded_sig)
         self._export_to_qr(encoded_sig)
 
