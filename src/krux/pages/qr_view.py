@@ -53,6 +53,10 @@ class SeedQRView(Page):
         super().__init__(ctx, None)
         self.ctx = ctx
         self.binary = binary
+
+        # Custom for Android
+        self.data = data
+
         if data:
             self.code = qrcode.encode(data)  # pylint: disable=E1101
             self.title = title
@@ -524,6 +528,10 @@ class SeedQRView(Page):
                     else:
                         self.qr_foreground = None
 
+                def copy_to_clipboard():
+                    self.copy_to_clipboard(self.data)
+                    return MENU_CONTINUE
+
                 self.draw_grided_qr(mode)
                 if self.ctx.display.height() > self.ctx.display.width():
                     self.ctx.display.draw_hcentered_text(
@@ -558,14 +566,16 @@ class SeedQRView(Page):
             qr_menu = [
                 (t("Return to QR Viewer"), lambda: None),
                 (t("Toggle Brightness"), toggle_brightness),
-                (
-                    t("Save QR Image to SD Card"),
-                    (
-                        self.save_qr_image_menu
-                        if allow_export and self.has_sd_card()
-                        else None
-                    ),
-                ),
+                # Custom for Android
+                ("Copy to Clipboard", copy_to_clipboard),
+                # (
+                #     t("Save QR Image to SD Card"),
+                #     (
+                #         self.save_qr_image_menu
+                #         if allow_export and self.has_sd_card()
+                #         else None
+                #     ),
+                # ),
                 (t("Print as QR"), printer_func),
             ]
             submenu = Menu(self.ctx, qr_menu, back_label=t("Back to Menu"))

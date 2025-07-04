@@ -101,6 +101,8 @@ class Login(Page):
                 (t("Via Camera"), self.load_key_from_camera),
                 (t("Via Manual Input"), self.load_key_from_manual_input),
                 (t("From Storage"), self.load_mnemonic_from_storage),
+                # Custom for Android
+                ("KEF from Clipboard", self.load_key_from_clipboard),
             ],
         )
         index, status = submenu.run_loop()
@@ -108,6 +110,33 @@ class Login(Page):
             return MENU_CONTINUE
         return status
 
+    # Custom for Android
+    def load_key_from_clipboard(self):
+        from .encryption_ui import decrypt_kef
+
+        data = self.paste_clipboard()
+
+        if data is None:
+            self.flash_error(t("Failed to load"))
+            return MENU_CONTINUE
+
+        words = []
+        try:
+            data_bytes = decrypt_kef(self.ctx, data)
+            if len(data_bytes) in (16, 32):
+                from embit.bip39 import mnemonic_from_bytes
+
+                words = mnemonic_from_bytes(data_bytes).split()
+        except:
+            self.flash_error(t("Failed to load"))
+            return MENU_CONTINUE
+        
+        if not words:
+            self.flash_error(t("Failed to load"))
+            return MENU_CONTINUE
+
+        return self._load_key_from_words(words)
+    
     def load_key_from_camera(self):
         """Handler for the 'load mnemonic'>'via camera' menu item"""
         submenu = Menu(

@@ -176,10 +176,6 @@ class RootWidget(FloatLayout):
 class KruxApp(App):
     
     def build(self):
-        if platform not in ('android', 'ios'):
-            # Temporary fix for desktop testing
-            Window.size = (800, 1200)
-        
         if platform == 'android':
             Window.bind(on_resize=hide_landscape_status_bar)
         return RootWidget()

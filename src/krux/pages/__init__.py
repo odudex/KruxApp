@@ -558,6 +558,80 @@ class Page:
                 theme.frame_color,
             )
 
+    # Custom for Android
+    def copy_to_clipboard(self, text):
+        from kivy.utils import platform
+
+        success = False
+        if platform == 'android':
+            try:
+                from jnius import autoclass
+
+                # Get the current activity and context
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                activity = PythonActivity.mActivity
+                Context = autoclass('android.content.Context')
+
+                # Access the ClipboardManager
+                clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE)
+
+                # Create a ClipData object with the text to copy
+                ClipData = autoclass('android.content.ClipData')
+                clip = ClipData.newPlainText('label', text)
+
+                # Set the primary clip to copy the data to the clipboard
+                clipboard.setPrimaryClip(clip)
+                success = True
+            except:
+                pass
+        else:
+            try:
+                from kivy.core.clipboard import Clipboard
+                Clipboard.copy(text)
+                success = True
+            except:
+                pass
+        if success:
+            self.flash_text("Data copied to clipboard")
+        else:
+            self.flash_error("Failed to copy data to clipboard")
+
+    def paste_clipboard(self):
+        """Loads data from the clipboard, if available"""
+        from kivy.utils import platform
+
+        if platform == 'android':
+            try:
+                from jnius import autoclass, cast
+
+                # Access Android clipboard through native API
+                Context = autoclass('android.content.Context')
+                PythonActivity = autoclass('org.kivy.android.PythonActivity')
+                activity = PythonActivity.mActivity
+                
+                clipboard_service = activity.getSystemService(Context.CLIPBOARD_SERVICE)
+                clipboard = cast('android.content.ClipboardManager', clipboard_service)
+                
+                if not clipboard.hasPrimaryClip():
+                    return None
+                
+                clip_data = clipboard.getPrimaryClip()
+                if clip_data.getItemCount() == 0:
+                    return None
+                
+                # Extract text from first clip item
+                return str(clip_data.getItemAt(0).coerceToText(activity))
+
+            except:
+                pass
+        else:
+            try:
+                from kivy.core.clipboard import Clipboard
+                return Clipboard.paste()
+            except:
+                pass
+        return None
+
 
 class ListView:
     """Acts as a fixed-size, sliding window over an underlying list"""

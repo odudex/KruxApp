@@ -275,7 +275,7 @@ class DatumToolMenu(Page):
                 [
                     (t("Scan a QR"), self.scan_qr),
                     (t("Text Entry"), self.text_entry),
-                    (t("Read File"), self.read_file),
+                    ("Load from Clipboard", self.load_from_clipboard),
                 ],
             ),
         )
@@ -365,6 +365,20 @@ class DatumToolMenu(Page):
         page.contents = contents
         # pylint: disable=C0207
         page.title = filename.split("/")[-1]
+        return page.view_contents()
+    
+    # Custom for Android
+    def load_from_clipboard(self):
+        """Handler for loading from clipboard"""
+
+        content = self.paste_clipboard()
+        if not content:
+            self.flash_error(t("Clipboard is empty or not available."))
+            return MENU_CONTINUE
+
+        print("Loaded from clipboard:", content)
+        page = DatumTool(self.ctx)
+        page.contents, page.title = content, t("Clipboard Text")
         return page.view_contents()
 
 
@@ -650,8 +664,11 @@ class DatumTool(Page):
             menu.append((t("Export to QR"), lambda: "export_qr"))
 
             # when not sensitive, allow export to sd
+            # Custom for Android
+            # if not self.sensitive:
+            #     menu.append((t("Export to SD"), lambda: "export_sd"))
             if not self.sensitive:
-                menu.append((t("Export to SD"), lambda: "export_sd"))
+                menu.append(("Export to Clipboard", lambda: "export_clip"))
 
         else:
             if isinstance(self.contents, bytes):
@@ -771,7 +788,9 @@ class DatumTool(Page):
             # if user chose to export_qr
             self.view_qr()
         else:
-            # user chose export_sd
-            self.save_sd()
+            # Custom for Android
+            self.copy_to_clipboard(self.contents)
+            # # user chose export_sd
+            # self.save_sd()
 
         return self.view_contents(**kvargs)
