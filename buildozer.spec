@@ -13,6 +13,12 @@ package.domain = selfcustody.github.io
 source.dir = .
 source.main = main.py
 
+# Release signing configuration
+android.release_keystore = %(source.dir)s/kruxapp-release-key.jks
+android.release_keyalias = ${ALIAS_NAME}
+
+android.release_artifact = apk
+
 # (list) Source files to include (let empty to include all the files)
 source.include_exts = py,png,jpg,kv,atlas,ttf
 

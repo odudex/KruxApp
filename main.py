@@ -30,7 +30,7 @@ Builder.load_string("""
 
     Label:
         id: label_1
-        font_size: root.height // 30
+        font_size: root.height // 32
         font_name: 'NotoSansCJK_CY_JP_SC_KR_VI_Krux.ttf'
         size_hint: 1, 0.8
         pos_hint: {'top': 1}
