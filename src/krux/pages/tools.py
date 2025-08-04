@@ -53,7 +53,7 @@ class Tools(Page):
                 [
                     (t("Check SD Card"), self.sd_check),
                     (t("Datum Tool"), self.datum_tool),
-                    #(t("Device Tests"), self.device_tests),
+                    #(t("Device Tests"), None),  # Android custom
                     # (t("Create QR Code"), self.create_qr),
                     (t("Descriptor Addresses"), self.descriptor_addresses),
                     (t("Flash Tools"), None),  # Android custom

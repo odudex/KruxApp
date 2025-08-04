@@ -20,7 +20,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 from embit import bip85
-from embit.bip32 import HARDENED_INDEX
 from ...qr import FORMAT_NONE
 from ...sd_card import B64_FILE_EXTENSION
 from ...baseconv import base_encode
@@ -31,8 +30,6 @@ from .. import (
     Menu,
     Page,
     MENU_CONTINUE,
-    DIGITS,
-    ESC_KEY,
     choose_len_mnemonic,
 )
 
@@ -45,33 +42,18 @@ PWD_MAX_LEN = 86
 class Bip85(Page):
     """UI to export and load BIP85 entropy"""
 
-    def _capture_index(self, starting_buffer=""):
-        """Capture the index from the user"""
-        while True:
-            child = self.capture_from_keypad(
-                t("Index"), [DIGITS], starting_buffer=starting_buffer
-            )
-            if child == ESC_KEY:
-                return None
-            try:
-                child_index = int(child)
-            except:  # Empty input
-                continue
-            if child_index >= HARDENED_INDEX:
-                self.flash_error(
-                    t("Value %s out of range: [%s, %s]")
-                    % (child_index, 0, HARDENED_INDEX - 1)
-                )
-                continue
-            return child_index
-
     def _derive_mnemonic(self):
         """Derive a BIP85 mnemonic"""
         num_words = choose_len_mnemonic(self.ctx)
         if not num_words:
             return MENU_CONTINUE
 
-        child_index = self._capture_index()
+        from ..utils import Utils
+
+        utils = Utils(self.ctx)
+        child_index = ""
+        while child_index == "":
+            child_index = utils.capture_index_from_keypad(t("Index"))
         if child_index is None:
             return MENU_CONTINUE
 
@@ -126,33 +108,28 @@ class Bip85(Page):
             save_as_binary=False,
         )
 
-
     def _derive_base64_password(self):
         """Derive a BIP85 base64 password"""
-        child_index = self._capture_index()
+        from ..utils import Utils
+
+        utils = Utils(self.ctx)
+        child_index = ""
+        while child_index == "":
+            child_index = utils.capture_index_from_keypad(t("Index"))
         if child_index is None:
             return MENU_CONTINUE
 
         # Capture the password length
-        while True:
-            pwd_len_txt = self.capture_from_keypad(
-                t("Password Length"), [DIGITS], starting_buffer=DEFAULT_PWD_LEN
+        pwd_len = ""
+        while pwd_len == "":
+            pwd_len = utils.capture_index_from_keypad(
+                t("Password Length"),
+                initial_val=DEFAULT_PWD_LEN,
+                range_min=PWD_MIN_LEN,
+                range_max=PWD_MAX_LEN,
             )
-            if pwd_len_txt == ESC_KEY:
-                return MENU_CONTINUE
-            try:
-                pwd_len = int(pwd_len_txt)
-            except:  # Empty input
-                continue
-
-            # Check if the password length is within the range
-            if pwd_len < PWD_MIN_LEN or pwd_len > PWD_MAX_LEN:
-                self.flash_error(
-                    t("Value %s out of range: [%s, %s]")
-                    % (pwd_len, PWD_MIN_LEN, PWD_MAX_LEN)
-                )
-                continue
-            break
+        if pwd_len is None:
+            return MENU_CONTINUE
 
         entropy = bip85.derive_entropy(
             self.ctx.wallet.key.root,
@@ -189,13 +166,16 @@ class Bip85(Page):
                 offset=info_len,
             )
             index, _ = submenu.run_loop()
-            if index == len(menu_items) - 1:
+            if index == submenu.back_index:
                 break
         return MENU_CONTINUE
 
     def _sign_file_menu(self):
         """Handler for the 'sign file' menu item"""
-        child_index = self._capture_index(starting_buffer="0")
+        from ..utils import Utils
+
+        utils = Utils(self.ctx)
+        child_index = utils.capture_index_from_keypad(t("Index"))
         if child_index is None:
             return MENU_CONTINUE
 
@@ -206,12 +186,13 @@ class Bip85(Page):
 
     def export(self):
         """Exports BIP85 child mnemonics"""
-        Menu(
+        submenu = Menu(
             self.ctx,
             [
                 (t("BIP39 Mnemonic"), self._derive_mnemonic),
                 (t("Base64 Password"), self._derive_base64_password),
                 (t("GPG Key"), self._sign_file_menu),
             ],
-        ).run_loop()
+        )
+        submenu.run_loop()
         return MENU_CONTINUE

@@ -26,8 +26,6 @@ def base_decode(v, base):
     """Abstraction to decode the str data in v as base; returns bytes"""
     if not isinstance(v, str):
         raise TypeError("Invalid value, expected str")
-    if base not in (32, 43, 58, 64):
-        raise ValueError("not supported base: {}".format(base))
 
     if v == "":
         return b""
@@ -48,15 +46,14 @@ def base_decode(v, base):
         return pure_python_base_decode(v, 58)
     if base == 64:
         return a2b_base64(v)
-    return None  # dead code to apease pylint
+
+    raise ValueError("not supported base: {}".format(base))
 
 
 def base_encode(v, base):
     """Abstraction to encode the bytes data in v as base; returns str"""
     if not isinstance(v, bytes):
         raise TypeError("Invalid value, expected bytes")
-    if base not in (32, 43, 58, 64):
-        raise ValueError("not supported base: {}".format(base))
 
     if v == b"":
         return ""
@@ -78,14 +75,15 @@ def base_encode(v, base):
         return pure_python_base_encode(v, 58)
     if base == 64:
         return b2a_base64(v).rstrip().decode()
-    return None  # dead code to apease pylint
+
+    raise ValueError("not supported base: {}".format(base))
 
 
-def detect_encodings(str_data):
-    """Detects which encodings this data str might be, returns list"""
+def hint_encodings(str_data):
+    """NON-VERIFIED encoding hints of what input string might be, returns list"""
 
     if not isinstance(str_data, str):
-        raise TypeError("detect_encodings() expected str")
+        raise TypeError("hint_encodings() expected str")
 
     encodings = []
 
@@ -111,6 +109,10 @@ def detect_encodings(str_data):
     if "$" <= min_chr and max_chr <= "Z":
         encodings.append(43)
 
+    # might it be base58? currently unused
+    # if "1" <= min_chr and max_chr <= "z":
+    #     encodings.append(58)
+
     # might it be base64
     if "+" <= min_chr and max_chr <= "z":
         encodings.append(64)
@@ -130,10 +132,7 @@ def detect_encodings(str_data):
 
 # pure-python encoder/decoder for base43 and base58 below
 B43CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ$*+-./:"
-assert len(B43CHARS) == 43
-
 B58CHARS = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-assert len(B58CHARS) == 58
 
 
 def pure_python_base_decode(v, base):

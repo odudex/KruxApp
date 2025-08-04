@@ -101,16 +101,9 @@ class MnemonicStorage:
             return self._deprecated_decrypt(key, mnemonic_id, iterations, mode, data)
         return None
 
-    def store_encrypted(self, key, mnemonic_id, mnemonic, sd_card=False, i_vector=None):
-        """Saves the encrypted mnemonic on a file, returns True if successful"""
-        iterations = Settings().encryption.pbkdf2_iterations
-        encryptor = kef.Cipher(key, mnemonic_id, iterations)
-        mode_name = Settings().encryption.version
-        plain = bip39.mnemonic_to_bytes(mnemonic)
-        version = kef.suggest_versions(plain, mode_name)[0]
-        encrypted = encryptor.encrypt(plain, version, i_vector)
-        envelope = kef.wrap(mnemonic_id, version, iterations, encrypted)
-        b64_kef = base_encode(envelope, 64)
+    def store_encrypted_kef(self, mnemonic_id, kef_envelope, sd_card=False):
+        """Saves a KEF envelope directly to storage, returns True if successful"""
+        b64_kef = base_encode(kef_envelope, 64)
         mnemonics = {}
         if sd_card:
             # load current MNEMONICS_FILE
@@ -140,21 +133,6 @@ class MnemonicStorage:
             except:
                 return False
             return True
-        
-        #     try:
-        #         # load current MNEMONICS_FILE
-        #         with open(FLASH_PATH_STR % MNEMONICS_FILE, "r") as f:
-        #             mnemonics = json.loads(f.read())
-        #     except:
-        #         pass
-        #     try:
-        #         # save the new MNEMONICS_FILE
-        #         with open(FLASH_PATH_STR % MNEMONICS_FILE, "w") as f:
-        #             mnemonics[mnemonic_id] = {"b64_kef": b64_kef}
-        #             f.write(json.dumps(mnemonics))
-        #     except:
-        #         return False
-        # return True
 
     def del_mnemonic(self, mnemonic_id, sd_card=False):
         """Remove an entry from encrypted mnemonics file"""
@@ -168,9 +146,11 @@ class MnemonicStorage:
                     contents += " " * (orig_len - len(contents))
                 sd.write(MNEMONICS_FILE, contents)
         else:
-            self.stored.pop(mnemonic_id)
-            with open(FLASH_PATH_STR % MNEMONICS_FILE, "w") as f:
-                f.write(json.dumps(self.stored))
+            # Custom for Android
+            try:
+                self.stored.delete(mnemonic_id)
+            except:
+                raise("Error deleting mnemonic from storage")
 
 
 class EncryptedQRCode:

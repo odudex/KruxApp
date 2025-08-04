@@ -1,0 +1,3 @@
+[submodule "vendor/embit"]
+	path = vendor/embit
+	url = https://github.com/odudex/embit.git

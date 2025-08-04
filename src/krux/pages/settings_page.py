@@ -23,7 +23,7 @@
 
 import lcd
 from ..display import FONT_HEIGHT, FONT_WIDTH, PORTRAIT
-from ..themes import theme, GREEN, ORANGE
+from ..themes import theme, MAIN_TXT_COLOR, TEST_TXT_COLOR
 from ..settings import (
     CategorySetting,
     NumberSetting,
@@ -64,8 +64,8 @@ PERSIST_MSG_TIME = 2500
 DISPLAY_TEST_TIME = 5000  # 5 seconds
 
 CATEGORY_SETTING_COLOR_DICT = {
-    MAIN_TXT: ORANGE,
-    TEST_TXT: GREEN,
+    MAIN_TXT: MAIN_TXT_COLOR,
+    TEST_TXT: TEST_TXT_COLOR,
     True: theme.go_color,
     False: theme.no_esc_color,
 }
@@ -304,7 +304,7 @@ class SettingsPage(Page):
 
             submenu = Menu(self.ctx, items, back_status=back_status)
             index, status = submenu.run_loop()
-            if index == len(submenu.menu) - 1:
+            if index == submenu.back_index:
                 return MENU_CONTINUE
             return status
 

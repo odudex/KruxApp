@@ -41,7 +41,8 @@ class QRCodeCapture(Page):
     def __init__(self, ctx):
         super().__init__(ctx, None)
         self.ctx = ctx
-        self.progress_bar_offset_y = (self.ctx.display.height() * 8) // 10  # 80% Android custom
+        # Android custom - 80% 
+        self.progress_bar_offset_y = (self.ctx.display.height() * 8) // 10
 
     def light_control(self):
         """Controls the light based on the user input"""
