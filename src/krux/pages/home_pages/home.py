@@ -161,7 +161,8 @@ class Home(Page):
 
         from .bip85 import Bip85
 
-        Bip85(self.ctx).export()
+        bip85 = Bip85(self.ctx)
+        bip85.export()
         return MENU_CONTINUE
 
     def wallet(self):
@@ -195,10 +196,8 @@ class Home(Page):
                 (t("Message"), self.sign_message),
             ],
         )
-        index, status = submenu.run_loop()
-        if index == submenu.back_index:
-            return MENU_CONTINUE
-        return status
+        submenu.run_loop()
+        return MENU_CONTINUE
 
     def load_psbt(self):
         """Loads a PSBT from camera or SD card"""
@@ -256,7 +255,7 @@ class Home(Page):
         gc.collect()
 
         self.ctx.display.clear()
-        self.ctx.display.draw_centered_text(t("Signing.."))
+        self.ctx.display.draw_centered_text(t("Signing…"))
 
         if index == 1:  # Sign to QR code
             signer.sign()
@@ -459,16 +458,21 @@ class Home(Page):
             self.flash_error(t("Failed to load"))
             return MENU_CONTINUE
 
-        try:
-            from ..encryption_ui import decrypt_kef
-
-            data = decrypt_kef(self.ctx, data)
-        except:
-            pass
+        # DISABLED to avoid false "Decrypt?" on normal PSBTs as KEF
+        # try:
+        #     from ..encryption_ui import decrypt_kef
+        #
+        #     data = decrypt_kef(self.ctx, data)
+        # except KeyError:
+        #     self.flash_error(t("Failed to decrypt"))
+        #     return MENU_CONTINUE
+        # except ValueError:
+        #     # ValueError=not KEF or declined to decrypt
+        #     pass
 
         # PSBT read OK! Will try to sign
         self.ctx.display.clear()
-        self.ctx.display.draw_centered_text(t("Loading.."))
+        self.ctx.display.draw_centered_text(t("Loading…"))
 
         qr_format = FORMAT_PMOFN if qr_format == FORMAT_NONE else qr_format
         from ...psbt import PSBTSigner
@@ -484,7 +488,7 @@ class Home(Page):
             return MENU_CONTINUE
 
         self.ctx.display.clear()
-        self.ctx.display.draw_centered_text(t("Processing.."))
+        self.ctx.display.draw_centered_text(t("Processing…"))
         outputs, fee_percent = signer.outputs()
 
         if not self._fees_psbt_warn(fee_percent):

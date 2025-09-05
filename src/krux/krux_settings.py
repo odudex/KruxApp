@@ -25,14 +25,23 @@ from .settings import (
     SettingsNamespace,
     CategorySetting,
     NumberSetting,
+    LinkedCategorySetting,
     SD_PATH,
     FLASH_PATH,
     MAIN_TXT,
     TEST_TXT,
-    NAME_SINGLE_SIG,
-    POLICY_TYPE_NAMES,
 )
-from .key import SCRIPT_LONG_NAMES
+
+from .key import (
+    NAME_SINGLE_SIG,
+    NAME_MULTISIG,
+    NAME_MINISCRIPT,
+    POLICY_TYPE_NAMES,
+    SINGLESIG_SCRIPT_NAMES,
+    MULTISIG_SCRIPT_NAMES,
+    MINISCRIPT_SCRIPT_NAMES,
+)
+
 from .kboard import kboard
 
 BAUDRATES = [1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
@@ -130,9 +139,31 @@ class DefaultWallet(SettingsNamespace):
 
     namespace = "settings.wallet"
     network = CategorySetting("network", MAIN_TXT, [MAIN_TXT, TEST_TXT])
-    policy_type = CategorySetting("policy_type", NAME_SINGLE_SIG, POLICY_TYPE_NAMES)
     script_type = CategorySetting(
-        "script_type", "Native Segwit - 84", list(SCRIPT_LONG_NAMES.keys())
+        "script_type", "Native Segwit - 84", SINGLESIG_SCRIPT_NAMES
+    )
+    policy_type = LinkedCategorySetting(
+        "policy_type",
+        NAME_SINGLE_SIG,
+        POLICY_TYPE_NAMES,
+        script_type,
+        # On condition, apply the tuple (categories, default_value)
+        # else, keep the current (categories, default_value)
+        lambda input, l_set: (
+            (SINGLESIG_SCRIPT_NAMES, SINGLESIG_SCRIPT_NAMES[2])
+            if input == NAME_SINGLE_SIG
+            else (l_set.categories, l_set.default_value)
+        ),
+        lambda input, l_set: (
+            (MULTISIG_SCRIPT_NAMES, MULTISIG_SCRIPT_NAMES[2])
+            if input == NAME_MULTISIG
+            else (l_set.categories, l_set.default_value)
+        ),
+        lambda input, l_set: (
+            (MINISCRIPT_SCRIPT_NAMES, MINISCRIPT_SCRIPT_NAMES[0])
+            if input == NAME_MINISCRIPT
+            else (l_set.categories, l_set.default_value)
+        ),
     )
 
     def label(self, attr):
@@ -303,7 +334,7 @@ class DisplayAmgSettings(SettingsNamespace):
     def label(self, attr):
         """Returns a label for UI when given a setting name or namespace"""
         return {
-            "flipped_x": t("Flipped X Coordinates"),
+            "flipped_x": t("Mirror X Coordinates"),
             "inverted_colors": t("Inverted Colors"),
             "bgr_colors": t("BGR Colors"),
             "lcd_type": t("LCD Type"),
@@ -330,7 +361,7 @@ class DisplaySettings(SettingsNamespace):
         if kboard.can_control_brightness:
             options["brightness"] = t("Brightness")
         if kboard.can_flip_orientation:
-            options["flipped_orientation"] = t("Flipped Orientation")
+            options["flipped_orientation"] = t("Rotate 180°")
 
         return options[attr]
 
@@ -400,7 +431,7 @@ class EncryptionSettings(SettingsNamespace):
         """Returns a label for UI when given a setting name or namespace"""
         return {
             "version": t("Encryption Mode"),
-            "pbkdf2_iterations": t("PBKDF2 Iter."),
+            "pbkdf2_iterations": t("PBKDF2 iter."),
         }[attr]
 
 

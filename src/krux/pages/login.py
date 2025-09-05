@@ -1,5 +1,7 @@
 # The MIT License (MIT)
 
+# pylint: disable=C0103,C0116,C0206,C0302,E0601,R0912,R0914,W0212,W0612,W0613
+
 # Copyright (c) 2021-2024 Krux contributors
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -40,13 +42,17 @@ from ..krux_settings import Settings
 from ..qr import FORMAT_UR
 from ..key import (
     Key,
+    P2WPKH,
     P2WSH,
-    P2TR,
-    SCRIPT_LONG_NAMES,
+    P2SH,
+    SINGLESIG_SCRIPT_MAP,
+    MULTISIG_SCRIPT_MAP,
+    MINISCRIPT_SCRIPT_MAP,
     TYPE_SINGLESIG,
     TYPE_MULTISIG,
     TYPE_MINISCRIPT,
     POLICY_TYPE_IDS,
+    NAME_MULTISIG,
 )
 from ..krux_settings import t
 
@@ -165,7 +171,7 @@ class Login(Page):
             [
                 (t("Words"), self.load_key_from_text),
                 (t("Word Numbers"), self.pre_load_key_from_digits),
-                ("Tiny Seed (Bits)", self.load_key_from_tiny_seed),
+                ("Tinyseed (Bits)", self.load_key_from_tiny_seed),
                 ("Stackbit 1248", self.load_key_from_1248),
             ],
         )
@@ -320,20 +326,39 @@ class Login(Page):
         ):
             # Retro compatibility with old settings - Multisig (false or true)
             if Settings().wallet.multisig:
-                Settings().wallet.policy_type = TYPE_MULTISIG
-        else:
-            # New settings - Policy type (single-sig, multisig, miniscript)
-            policy_type = POLICY_TYPE_IDS.get(
-                Settings().wallet.policy_type, TYPE_SINGLESIG
-            )
+                Settings().wallet.policy_type = NAME_MULTISIG
+
+        # New settings - Policy type (single-sig, multisig, miniscript)
+        policy_type = POLICY_TYPE_IDS.get(Settings().wallet.policy_type, TYPE_SINGLESIG)
         network = NETWORKS[Settings().wallet.network]
         account = 0
+
+        # If single-sig, by default we use p2wpkh
+        # but respect the script type setting
+        # in default wallet settings
         if policy_type == TYPE_SINGLESIG:
-            script_type = SCRIPT_LONG_NAMES.get(Settings().wallet.script_type)
-        elif policy_type == TYPE_MINISCRIPT and Settings().wallet.script_type == P2TR:
-            script_type = P2TR
-        else:
-            script_type = P2WSH
+            script_type = SINGLESIG_SCRIPT_MAP.get(
+                Settings().wallet.script_type, P2WPKH
+            )
+
+        # If multi-sig, by default we use p2wsh
+        # but respect the script type setting
+        # in default wallet settings, but if we're
+        # using P2SH, we don't use, by default,
+        # an account (m/45')
+        if policy_type == TYPE_MULTISIG:
+            script_type = MULTISIG_SCRIPT_MAP.get(Settings().wallet.script_type, P2WSH)
+            if script_type == P2SH:
+                account = None
+
+        # If miniscript, by default we use p2wsh
+        # but respect the script type setting
+        # in default wallet settings            #
+        if policy_type == TYPE_MINISCRIPT:
+            script_type = MINISCRIPT_SCRIPT_MAP.get(
+                Settings().wallet.script_type, P2WSH
+            )
+
         derivation_path = ""
 
         from ..wallet import Wallet
@@ -359,7 +384,9 @@ class Login(Page):
                 network_name, policy_type, script_type, derivation_path, True
             )
             wallet_info += "\n" + (
-                t("No Passphrase") if not passphrase else t("Passphrase") + ": *..*"
+                t("No Passphrase")
+                if not passphrase
+                else t("Passphrase") + " (%d): *…*" % len(passphrase)
             )
 
             self.ctx.display.clear()
@@ -415,7 +442,7 @@ class Login(Page):
                 )
 
         self.ctx.display.clear()
-        self.ctx.display.draw_centered_text(t("Loading.."))
+        self.ctx.display.draw_centered_text(t("Loading…"))
 
         self.ctx.wallet = Wallet(key)
         return MENU_EXIT
@@ -473,7 +500,7 @@ class Login(Page):
                     self.flash_error(t("Key was not provided"))
                     return MENU_CONTINUE
                 self.ctx.display.clear()
-                self.ctx.display.draw_centered_text(t("Processing.."))
+                self.ctx.display.draw_centered_text(t("Processing…"))
                 word_bytes = encrypted_qr.decrypt(key)
                 if word_bytes is None:
                     self.flash_error(t("Failed to decrypt"))
@@ -512,7 +539,11 @@ class Login(Page):
 
         try:
             data = decrypt_kef(self.ctx, data)
-        except:
+        except KeyError:
+            self.flash_error(t("Failed to decrypt"))
+            return MENU_CONTINUE
+        except ValueError:
+            # ValueError=not KEF or declined to decrypt
             pass
 
         words = []
@@ -804,7 +835,7 @@ class Login(Page):
         return MENU_CONTINUE
 
     def load_key_from_tiny_seed(self):
-        """Menu handler to manually load key from Tiny Seed sheet metal storage method"""
+        """Menu handler to manually load key from Tinyseed sheet metal storage method"""
         from .tiny_seed import TinySeed
 
         len_mnemonic = choose_len_mnemonic(self.ctx)
@@ -818,8 +849,8 @@ class Login(Page):
             return self._load_key_from_words(words)
         return MENU_CONTINUE
 
-    def load_key_from_tiny_seed_image(self, grid_type="Tiny Seed"):
-        """Menu handler to scan key from Tiny Seed sheet metal storage method"""
+    def load_key_from_tiny_seed_image(self, grid_type="Tinyseed"):
+        """Menu handler to scan key from Tinyseed sheet metal storage method"""
         from .tiny_seed import TinyScanner
 
         len_mnemonic = choose_len_mnemonic(self.ctx)

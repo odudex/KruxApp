@@ -38,6 +38,18 @@ from .encryption_ui import (
 )
 from ..display import FONT_WIDTH, FONT_HEIGHT, DEFAULT_PADDING, TOTAL_LINES
 from ..krux_settings import t
+from ..input import (
+    BUTTON_TOUCH,
+    BUTTON_ENTER,
+    FAST_FORWARD,
+    FAST_BACKWARD,
+    BUTTON_PAGE,
+    SWIPE_LEFT,
+    SWIPE_UP,
+    BUTTON_PAGE_PREV,
+    SWIPE_RIGHT,
+    SWIPE_DOWN,
+)
 
 DATUM_DESCRIPTOR = "DESC"
 DATUM_PSBT = "PSBT"
@@ -56,6 +68,8 @@ DATUM_BBQR_TYPES = {
     DATUM_XPUB: ["U"],
     DATUM_ADDRESS: ["U"],
 }
+
+STATIC_QR_MAX_SIZE = 4  # version 5 - 37x37
 
 
 def urobj_to_data(ur_obj):
@@ -124,7 +138,7 @@ def identify_datum(data):
     if isinstance(data, bytes):
         if data[:5] == b"psbt\xff":
             datum = DATUM_PSBT
-    else:
+    elif len(data) > 33:
         encodings = detect_encodings(data)
 
         if data[:1] in "xyzYZtuvUV" and data[1:4] == "pub" and 58 in encodings:
@@ -258,11 +272,12 @@ def detect_encodings(str_data, verify=True):
     if ord(max_chr) <= 127:
         encodings.append("ascii")
 
-    # might it be latin-1 or utf8
+    # might it be latin-1
     if 128 <= ord(max_chr) <= 255:
         encodings.append("latin-1")
-    else:
-        encodings.append("utf8")
+
+    # assume utf8
+    encodings.append("utf8")
 
     return encodings
 
@@ -276,8 +291,8 @@ class DatumToolMenu(Page):
             Menu(
                 ctx,
                 [
-                    (t("Scan a QR"), self.scan_qr),
-                    (t("Text Entry"), self.text_entry),
+                    (t("Via Camera"), self.scan_qr),
+                    (t("Via Manual Input"), self.text_entry),
                     # Custom for Android
                     ("Load from Clipboard", self.load_from_clipboard),
                 ],
@@ -321,7 +336,6 @@ class DatumToolMenu(Page):
                     UPPERCASE_LETTERS,
                     NUM_SPECIAL_1,
                     NUM_SPECIAL_2,
-                    "123456789abcdef0",
                 ],
             )
             if updated == text:
@@ -400,15 +414,21 @@ class DatumTool(Page):
 
     def view_qr(self):
         """Reusable handler for viewing a QR code"""
-        from ..qr import QR_CAPACITY_BYTE, QR_CAPACITY_ALPHANUMERIC
+        from ..qr import QR_CAPACITY_BYTE, QR_CAPACITY_ALPHANUMERIC, QR_CAPACITY_NUMERIC
         from ..bbqr import encode_bbqr
         import urtypes
         from ur.ur import UR
 
-        if isinstance(self.contents, bytes):
-            seedqrview_thresh = QR_CAPACITY_BYTE[4]
-        else:
-            seedqrview_thresh = QR_CAPACITY_ALPHANUMERIC[4]
+        # Helper function to check if character is alphanumeric
+        def is_alnum(c):
+            return ("A" <= c <= "Z") or ("0" <= c <= "9") or c in (" $%*+-./:")
+
+        seedqrview_thresh = QR_CAPACITY_BYTE[STATIC_QR_MAX_SIZE]
+        if not isinstance(self.contents, bytes):
+            if all(c.isdigit() for c in self.contents):
+                seedqrview_thresh = QR_CAPACITY_NUMERIC[STATIC_QR_MAX_SIZE]
+            elif all(is_alnum(c) for c in self.contents):
+                seedqrview_thresh = QR_CAPACITY_ALPHANUMERIC[STATIC_QR_MAX_SIZE]
 
         if len(self.contents) <= seedqrview_thresh:
             from .encryption_ui import prompt_for_text_update
@@ -434,10 +454,10 @@ class DatumTool(Page):
                     break
                 self.title = updated
 
-            # when not sensitive, allow export to sd
             kvargs = {}
+            # when not sensitive, allow export to sd
             if not self.sensitive:
-                kvargs = {"allow_export": True}
+                kvargs["allow_export"] = True
 
             seed_qr_view = SeedQRView(self.ctx, data=self.contents, title=self.title)
             seed_qr_view.display_qr(**kvargs)
@@ -500,12 +520,11 @@ class DatumTool(Page):
                 )
             except Exception as err:
                 self.flash_error(
-                    "TODO UR (crypto-account/crypto-descr/etc): "
-                    + repr(menu_opts[idx])
-                    + ")\n"
-                    + str(err)
+                    "Failed encoding ({}), try as bytes. {}".format(
+                        repr(menu_opts[idx]),
+                        str(err),
+                    )
                 )
-                self.view_qr()
 
         return MENU_CONTINUE
 
@@ -518,60 +537,111 @@ class DatumTool(Page):
             self.contents,
             self.title.split(",")[-1].replace(" ", "_"),
             save_as_binary=isinstance(self.contents, bytes),
-            prompt=True,
+            prompt=False,
         )
 
-    def _info_box(self, preview=True):
+    def _info_box(self, preview=True, about_suffix=""):
         """clears screen, displays info_box, returns height-in-lines"""
         from binascii import hexlify
 
         self.ctx.display.clear()
-        num_lines = self.ctx.display.draw_hcentered_text(
-            "\n".join(
+        parts = [
+            self.title,
+            "".join(
                 [
-                    self.title,
-                    "".join(
-                        [
-                            "wasKEF " if self.decrypted else "",
-                            "secret " if self.sensitive else "",
-                            ",".join([str(x) for x in self.encodings]),
-                        ]
-                    ),
-                    (self.datum + " " if self.datum else "") + self.about,
+                    "wasKEF " if self.decrypted else "",
+                    "secret " if self.sensitive else "",
+                    ",".join([str(x) for x in self.encodings]),
                 ]
             ),
+            " ".join(
+                [
+                    x
+                    for x in [
+                        self.about,
+                        self.datum,
+                        about_suffix,
+                    ]
+                    if x
+                ]
+            ),
+        ]
+        num_lines = self.ctx.display.draw_hcentered_text(
+            "\n".join(p for p in parts if p),
             info_box=True,
+            highlight_prefix=":",
         )
         if preview:
-            num_lines += 1
             self.ctx.display.draw_hcentered_text(
                 (
                     '"' + self.contents + '"'
                     if isinstance(self.contents, str)
                     else "0x" + hexlify(self.contents).decode()
                 ),
-                offset_y=DEFAULT_PADDING + num_lines * FONT_HEIGHT,
+                offset_y=DEFAULT_PADDING + num_lines * FONT_HEIGHT + 2,
                 max_lines=1,
                 info_box=True,
             )
+            num_lines += 1
 
         return num_lines
 
     def _show_contents(self):
         """Displays infobox and contents"""
         from binascii import hexlify
+        from ..settings import THIN_SPACE
+        from ..kboard import kboard
+        import math
 
-        info_len = self._info_box(preview=False)
-        self.ctx.display.draw_hcentered_text(
-            (
-                '"' + self.contents + '"'
-                if isinstance(self.contents, str)
-                else "0x" + hexlify(self.contents).decode()
-            ),
-            offset_y=DEFAULT_PADDING + (info_len + 1) * FONT_HEIGHT,
-            max_lines=TOTAL_LINES - (info_len + 2),
+        page_indicator = "p" + THIN_SPACE + "%d/%s"
+        max_lines = 0
+        offset_x = (
+            DEFAULT_PADDING
+            if not kboard.is_m5stickv
+            else (self.ctx.display.width() % FONT_WIDTH) // 2
         )
-        self.ctx.input.wait_for_button()
+        contents = (
+            self.contents
+            if isinstance(self.contents, str)
+            else hexlify(self.contents).decode()
+        )
+        content_len = len(contents)
+
+        def _update_infobox(curr_page, total="?"):
+            info_len = self._info_box(
+                preview=False, about_suffix=page_indicator % (curr_page, total)
+            )
+            max_lines = TOTAL_LINES - (info_len + 1)
+            total = math.ceil(
+                content_len / (self.ctx.display.ascii_chars_per_line() * max_lines)
+            )
+            return info_len, total, max_lines
+
+        curr_page = 0
+        start_index = 0
+        info_len, last_page, max_lines = _update_infobox(curr_page + 1)
+
+        while True:
+            info_len, last_page, max_lines = _update_infobox(curr_page + 1, last_page)
+            lines = self.ctx.display.to_lines(contents[start_index:], max_lines)
+
+            offset_y = DEFAULT_PADDING + (info_len) * FONT_HEIGHT + 1
+            for line in lines:
+                self.ctx.display.draw_string(offset_x, offset_y, line)
+                offset_y += FONT_HEIGHT
+
+            btn = self.ctx.input.wait_for_button()
+            if btn in (BUTTON_PAGE, FAST_FORWARD, SWIPE_UP, SWIPE_LEFT):
+                curr_page = (curr_page + 1) % last_page
+            elif btn in (BUTTON_PAGE_PREV, FAST_BACKWARD, SWIPE_DOWN, SWIPE_RIGHT):
+                curr_page = (curr_page - 1) % last_page
+            elif btn in (BUTTON_ENTER, BUTTON_TOUCH):
+                break
+            start_index = (
+                0
+                if curr_page == 0
+                else curr_page * self.ctx.display.ascii_chars_per_line() * max_lines - 1
+            )
 
     def _analyze_contents(self):
         """
@@ -658,7 +728,7 @@ class DatumTool(Page):
 
         if not offer_convert:
             menu.append((t("Convert Datum"), lambda: "convert_begin"))
-            menu.append((t("Export to QR"), lambda: "export_qr"))
+            menu.append((t("QR Code"), lambda: "export_qr"))
 
             # when not sensitive, allow export to sd
             if not self.sensitive:
@@ -701,7 +771,10 @@ class DatumTool(Page):
 
             if self.history:
                 for i, option in enumerate(menu):
-                    if option[1]() == self.history[-1]:
+                    if (
+                        option[1]() in ("HEX", "hex")
+                        and self.history[-1] in ("HEX", "hex")
+                    ) or option[1]() == self.history[-1]:
                         menu[i] = (option[0] + " (" + t("Undo") + ")", lambda: "undo")
                         break
 
@@ -740,7 +813,7 @@ class DatumTool(Page):
         menu = Menu(
             self.ctx,
             todo_menu,
-            offset=(info_len + 1) * FONT_HEIGHT + DEFAULT_PADDING,
+            offset=(info_len + 1) * FONT_HEIGHT + DEFAULT_PADDING + 2,
             **back_status
         )
         _, status = menu.run_loop()

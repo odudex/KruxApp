@@ -24,7 +24,7 @@ import board
 import time
 from .themes import theme
 from .krux_settings import Settings
-from .settings import THIN_SPACE
+from .settings import THIN_SPACE, ELLIPSIS
 from .kboard import kboard
 
 DEFAULT_PADDING = 10
@@ -51,6 +51,8 @@ STATUS_BAR_HEIGHT = (
 FLASH_MSG_TIME = 2000
 
 M5STICKV_WIDTH = 135
+
+ASIAN_MIN_CODEPOINT = 12288
 
 # Splash will use horizontally-centered text plots. Uses Thin spaces to help with alignment
 # Android Custom
@@ -94,7 +96,7 @@ class Display:
 
     def __init__(self):
         self.portrait = True  # Android Custom
-        if board.config["type"] == "amigo":
+        if kboard.is_amigo:
             self.flipped_x_coordinates = (
                 Settings().hardware.display.flipped_x_coordinates
             )
@@ -268,82 +270,111 @@ class Display:
             )
             self.portrait = True
 
-    def usable_pixels_in_line(self):
+    def _usable_pixels_in_line(self):
         """Returns qtd of usable pixels in a line"""
 
         return self.usable_width() if not kboard.is_m5stickv else self.width()
 
-    def to_lines(self, text, max_lines=None):
-        """Takes a string of text and converts it to lines to display on
-        the screen
+    def to_lines(self, text, max_lines=TOTAL_LINES):
+        """Maintains original API while using ._to_lines_endpos()"""
+
+        return self._to_lines_endpos(text, max_lines)[0]
+
+    def ascii_chars_per_line(self):
+        """Returns the qtd of non wide chars that fit on one line (columns)"""
+        return self._usable_pixels_in_line() // FONT_WIDTH
+
+    def _asian_chars_per_line(self):
+        """Returns the qtd of wide chars that fit on one line (columns)"""
+        return self._usable_pixels_in_line() // FONT_WIDTH_WIDE
+
+    def _to_lines_endpos(self, text, max_lines=TOTAL_LINES):
+        """Takes a string of text and returns tuple(lines, end) to display on
+        the screen and know how far into text it read; next page starts there.
         """
         if isinstance(text, list):
-            return text
-        lines = []
-        start = 0
-        line_count = 0
-        columns = self.usable_pixels_in_line()
+            return (text, sum((len(x) for x in text)))
+
+        columns = self.ascii_chars_per_line()
         if Settings().i18n.locale in [
             "ko-KR",
             "zh-CN",
             "ja-JP",
         ] and lcd.string_has_wide_glyph(text):
-            columns //= FONT_WIDTH_WIDE
-        else:
-            columns //= FONT_WIDTH
+            columns = self._asian_chars_per_line()
 
         # Quick return if content fits in one line
         if len(text) <= columns and "\n" not in text:
-            return [text]
+            return ([text], len(text))
 
-        if not max_lines:
-            max_lines = TOTAL_LINES
+        usable_pixels = self._usable_pixels_in_line()
+        total_chars = len(text)
 
-        while start < len(text) and line_count < max_lines:
-            # Find the next line break, if any
-            line_break = text.find("\n", start)
-            if line_break == -1:
-                next_break = len(text)
-            else:
-                next_break = min(line_break, len(text))
+        lines = []
+        start = 0
+        end = 0
+        last_space = -1
+        line_pixels = 0
+        line_count = 0
 
-            end = start + columns
-            # If next segment fits on one line, add it and continue
-            if end >= next_break:
-                lines.append(text[start:next_break].rstrip())
-                start = next_break + 1
+        while end < total_chars and line_count < max_lines:
+            c = text[end]
+
+            # handle explicit newline
+            if c == "\n":
+                lines.append(text[start:end])
+                end += 1
+                start = end
+                last_space = -1
+                line_pixels = 0
                 line_count += 1
                 continue
 
-            # If the end of the line is in the middle of a word,
-            # move the end back to the end of the previous word
-            if text[end] != " " and text[end] != "\n":
-                end = text.rfind(" ", start, end)
+            if c == " ":
+                last_space = end
 
-            # If there is no space, force break the word
-            if end == -1 or end < start:
-                end = start + columns
+            line_pixels += (
+                FONT_WIDTH_WIDE if ord(c) >= ASIAN_MIN_CODEPOINT else FONT_WIDTH
+            )
 
-            lines.append(text[start:end].rstrip())
-            # don't jump space if we're breaking a word
-            jump_space = 1 if text[end] == " " else 0
-            start = end + jump_space
+            if line_pixels <= usable_pixels:
+                end += 1
+                continue
+
+            # line overflow -> break
+            if last_space >= 0:
+                lines.append(text[start:last_space])
+                end = last_space + 1
+                last_space = -1
+            else:
+                lines.append(text[start:end])
+            start = end
+            line_pixels = 0
             line_count += 1
 
-        # Replace last line with ellipsis if we didn't finish the text
-        if line_count == max_lines and start < len(text):
-            lines[-1] = lines[-1][: columns - 3] + "..."
+        # flush remaining text
+        if end > start:
+            lines.append(text[start:end])
+            line_count += 1
 
-        return lines
+        if line_count == max_lines and end < total_chars:
+            char_count = 0
+            for c in lines[-1]:
+                line_pixels += (
+                    FONT_WIDTH_WIDE if ord(c) >= ASIAN_MIN_CODEPOINT else FONT_WIDTH
+                )
+                char_count += 1
+            if line_pixels + FONT_WIDTH >= usable_pixels:
+                lines[-1] = lines[-1][: char_count - 1] + ELLIPSIS
+                end -= 1
+            else:
+                lines[-1] += ELLIPSIS
+
+        return lines, end
 
     def clear(self):
         """Clears the display"""
         lcd.clear(theme.bg_color)
-        
-        # Custom for Android
-        if FONT_HEIGHT != lcd.font_size:
-            print("Updating font sizes")
-            update_font_sizes()
 
     def outline(self, x, y, width, height, color=theme.fg_color):
         """Draws an outline rectangle from given coordinates"""
@@ -381,16 +412,6 @@ class Display:
         """Draws a vertical line to the screen"""
         self.draw_line(x, y, x, y + height, color)
 
-    def fill_circle(self, x, y, radius, quadrant=0, color=theme.fg_color):
-        """
-        Fills a circle to the screen.
-        quadrant=0 will draw all 4 quadrants.
-        1 is top right, 2 is top left, 3 is bottom left, 4 is bottom right.
-        """
-        if self.flipped_x_coordinates:
-            x = self.width() - x
-        lcd.draw_circle(x, y, radius, quadrant, color)
-
     def draw_string(self, x, y, text, color=theme.fg_color, bg_color=theme.bg_color):
         """Draws a string to the screen"""
         if self.flipped_x_coordinates:
@@ -400,7 +421,7 @@ class Display:
         lcd.draw_string(x, y, text, color, bg_color)
 
     def get_center_offset_x(self, line):
-        """Return the ammount of offset_x to be at center"""
+        """Returns the ammount of offset_x to be at center"""
         return max(0, (self.width() - lcd.string_width_px(line)) // 2)
 
     def draw_hcentered_text(
@@ -410,7 +431,7 @@ class Display:
         color=theme.fg_color,
         bg_color=theme.bg_color,
         info_box=False,
-        max_lines=None,
+        max_lines=TOTAL_LINES,
         highlight_prefix="",
     ) -> int:
         """Draws text horizontally-centered on the display, at the given offset_y"""
@@ -478,7 +499,7 @@ class Display:
         return len(lines)  # return number of lines drawn
 
     def get_center_offset_y(self, lines_qtd):
-        """Return the ammount of offset_y to be at center"""
+        """Returns the ammount of offset_y to be at center"""
         return max(0, (self.height() - lines_qtd * FONT_HEIGHT) // 2)
 
     def draw_centered_text(
@@ -531,9 +552,16 @@ class Display:
             translated_level = 8
         power_manager.set_screen_brightness(translated_level)
 
-    def max_menu_lines(self, line_offset=STATUS_BAR_HEIGHT):
+    def max_menu_lines(self, line_offset=STATUS_BAR_HEIGHT, menu_lines=None):
         """Maximum menu items the display can fit"""
-        return (self.height() - line_offset) // (2 * FONT_HEIGHT)
+        one_line_fit_value = (self.height() - line_offset) // (2 * FONT_HEIGHT)
+
+        # avoid edge cases where exist menu items with two lines
+        if menu_lines:
+            total_lines = sum(len(self.to_lines(line[0])) for line in menu_lines)
+            if total_lines > len(menu_lines):
+                one_line_fit_value -= 1
+        return one_line_fit_value
 
     def render_image(self, img, title_lines=0, double_subtitle=False):
         """Renders the image based on the board type."""

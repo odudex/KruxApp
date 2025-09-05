@@ -141,6 +141,7 @@ class CameraEntropy(Page):
         import shannon
         from ..wdt import wdt
         from ..camera import ENTROPY_MODE
+        from ..format import replace_decimal_separator
 
         self.ctx.display.clear()
         self.ctx.display.draw_centered_text(t("TOUCH or ENTER to capture"))
@@ -173,7 +174,7 @@ class CameraEntropy(Page):
             self.flash_text(t("Capture cancelled"))
             return None
 
-        self.ctx.display.draw_centered_text(t("Processing.."))
+        self.ctx.display.draw_centered_text(t("Processing…"))
 
         self.entropy_measurement_update(img, all_at_once=True, show_measurement=False)
 
@@ -186,11 +187,12 @@ class CameraEntropy(Page):
         # Android images calculate Shannon's over 24 bits
         shannon_24b = shannon.entropy_img24b(img_bytes)
         shannon_24b_total = shannon_24b * img_pixels
-        entropy_msg = t("Shannon's entropy:\n")
-        entropy_msg += str(round(shannon_24b, 2)) + " bits/px\n"
-        entropy_msg += t("(%d total)\n\n") % int(shannon_24b_total)
-        entropy_msg += t("Pixels deviation index: ")
-        entropy_msg += str(self.stdev_index)
+        entropy_msg = t("Shannon's entropy:") + "\n"
+        entropy_msg += (t("%d bits (%s bits/px)") + "\n\n") % (
+            int(shannon_24b_total),
+            replace_decimal_separator("%.2g" % shannon_24b),
+        )
+        entropy_msg += "%s %s" % (t("Pixels deviation index:"), str(self.stdev_index))
         self.ctx.display.clear()
         self.ctx.input.reset_ios_state()
         if (

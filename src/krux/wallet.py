@@ -27,7 +27,9 @@ from .krux_settings import t
 from .qr import FORMAT_BBQR, FORMAT_NONE
 from .key import (
     P2PKH,
+    P2SH,
     P2SH_P2WPKH,
+    P2SH_P2WSH,
     P2WPKH,
     P2WSH,
     P2TR,
@@ -74,7 +76,20 @@ class Wallet:
                     "tr(%s/<0;1>/*)" % self.key.key_expression()
                 )
             self.label = t("Single-sig")
-            self.policy = {"type": self.descriptor.scriptpubkey_type()}
+            self.policy = {"type": self.get_scriptpubkey_type()}
+
+    def get_scriptpubkey_type(self):
+        """Returns the scriptpubkey type of the wallet descriptor"""
+        # Determine if P2SH, P2SH_P2WPKH or P2SH-P2WSH
+        # This is a workaround for embit while it not
+        # provides this directly
+        _type = self.descriptor.scriptpubkey_type()
+        if _type == P2SH:
+            if self.descriptor.wpkh:
+                _type = P2SH_P2WPKH
+            if self.descriptor.wsh:
+                _type = P2SH_P2WSH
+        return _type
 
     def which_network(self):
         """Returns network (NETWORKS.keys()) using current wallet key, else from descriptor"""
@@ -120,7 +135,6 @@ class Wallet:
 
     def _validate_descriptor(self, descriptor, descriptor_xpubs):
         """Validates the descriptor against the current key and policy type"""
-
         if self.is_multisig():
             if not descriptor.is_basic_multisig:
                 raise ValueError("not multisig")
@@ -176,8 +190,9 @@ class Wallet:
                 cosigners = sorted(cosigners)
             if not self.label:
                 self.label = t("%d of %d multisig") % (m, n)
+
             self.policy = {
-                "type": self.descriptor.scriptpubkey_type(),
+                "type": self.get_scriptpubkey_type(),
                 "m": m,
                 "n": n,
                 "cosigners": cosigners,
@@ -295,7 +310,7 @@ def parse_key_value_file(wallet_data):
             )
 
         script = key_vals[key_vals.index("Format") + 1].lower()
-        if script != P2WSH:
+        if script not in (P2SH, P2SH_P2WSH, P2WSH):
             raise ValueError("invalid script type: %s" % script)
 
         policy = key_vals[key_vals.index("Policy") + 1]
@@ -318,13 +333,22 @@ def parse_key_value_file(wallet_data):
 
         keys.sort()
         keys = ["[%s/%s]%s" % (key[1], derivation[2:], key[0]) for key in keys]
-        if len(keys) > 1:
+        descriptor = None
+        if script == P2SH:
+            descriptor = Descriptor.from_string(
+                ("sh(sortedmulti(%d," % m) + ",".join(keys) + "))"
+            )
+
+        if script == P2SH_P2WSH:
+            descriptor = Descriptor.from_string(
+                ("sh(wsh(sortedmulti(%d," % m) + ",".join(keys) + ")))"
+            )
+
+        if script == P2WSH:
             descriptor = Descriptor.from_string(
                 ("wsh(sortedmulti(%d," % m) + ",".join(keys) + "))"
             )
-        else:
-            # Single-sig - assuming Native Segwit
-            descriptor = Descriptor.from_string("wpkh(%s/<0;1>/*)" % keys[0])
+
         label = (
             key_vals[key_vals.index("Name") + 1]
             if key_vals.index("Name") >= 0
@@ -516,7 +540,7 @@ def xpub_data_to_derivation(versiontype, network, child, depth, allow_assumption
             ]
         elif versiontype == "Ypub" and depth == 4 and child == 1 + HARDENED_INDEX:
             derivation = [
-                MULTISIG_SCRIPT_PURPOSE + HARDENED_INDEX,
+                MULTISIG_SCRIPT_PURPOSE[P2SH_P2WSH] + HARDENED_INDEX,
                 network_node,
                 0 + HARDENED_INDEX,
                 child,
@@ -525,7 +549,7 @@ def xpub_data_to_derivation(versiontype, network, child, depth, allow_assumption
                 assumption_text = t("Account #0 would be assumed")
         elif versiontype == "Zpub" and depth == 4 and child == 2 + HARDENED_INDEX:
             derivation = [
-                MULTISIG_SCRIPT_PURPOSE + HARDENED_INDEX,
+                MULTISIG_SCRIPT_PURPOSE[P2WSH] + HARDENED_INDEX,
                 network_node,
                 0 + HARDENED_INDEX,
                 child,

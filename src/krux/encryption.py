@@ -32,6 +32,7 @@ from .settings import FLASH_PATH, MNEMONICS_FILE
 
 FLASH_PATH_STR = "/" + FLASH_PATH + "/%s"
 
+# Custom for Android
 STORE_FILE_PATH = "../seeds.json"
 QR_CODE_ITER_MULTIPLE = 10000
 
@@ -40,6 +41,7 @@ class MnemonicStorage:
     """Handler of stored encrypted seeds"""
 
     def __init__(self) -> None:
+        # Custom for Android
         self.stored = JsonStore(STORE_FILE_PATH)
         self.stored_sd = {}
 
@@ -190,7 +192,7 @@ class EncryptedQRCode:
                 "Encrypted QR Code:",
                 "ID: " + displayable_id,
                 "Version: " + version_name,
-                "Key iter.: " + str(self.iterations),
+                "PBKDF2 iter.: " + str(self.iterations),
             ]
         )
 
