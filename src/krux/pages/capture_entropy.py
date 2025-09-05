@@ -105,7 +105,8 @@ class CameraEntropy(Page):
                     0,
                     self.y_label_offset,
                     self.ctx.display.width(),
-                    FONT_HEIGHT,
+                    # Custom for Android:
+                    FONT_HEIGHT + FONT_HEIGHT // 3,
                     theme.bg_color,
                 )
                 if entropy_level == GOOD_ENTROPY:
