@@ -26,7 +26,14 @@ from . import Page, ESC_KEY, LETTERS
 from ..display import DEFAULT_PADDING, MINIMAL_PADDING, FONT_HEIGHT
 from ..krux_settings import t
 from ..themes import theme
-from ..input import BUTTON_TOUCH, BUTTON_ENTER, BUTTON_PAGE, BUTTON_PAGE_PREV
+from ..input import (
+    BUTTON_TOUCH,
+    BUTTON_ENTER,
+    BUTTON_PAGE,
+    BUTTON_PAGE_PREV,
+    FAST_FORWARD,
+    FAST_BACKWARD,
+)
 from ..key import Key
 from ..kboard import kboard
 
@@ -170,7 +177,7 @@ class MnemonicEditor(Page):
         word_v_padding = self.ctx.display.height() * 3 // 4
         word_v_padding //= 12
 
-        if self.ctx.input.touch is not None:
+        if kboard.has_touchscreen:
             self.ctx.input.touch.clear_regions()
             self.ctx.input.touch.x_regions.append(0)
             self.ctx.input.touch.x_regions.append(self.ctx.display.width() // 2)
@@ -290,7 +297,7 @@ class MnemonicEditor(Page):
             self.ctx.display.clear()
             self._draw_header()
             self._map_words(button_index, page)
-            btn = self.ctx.input.wait_for_button()
+            btn = self.ctx.input.wait_for_fastnav_button()
             if btn == BUTTON_TOUCH:
                 button_index = self.ctx.input.touch.current_index()
                 if button_index < ESC_INDEX:
@@ -324,7 +331,7 @@ class MnemonicEditor(Page):
                     ):
                         self.current_mnemonic[button_index + page * 12] = new_word
                         self.calculate_checksum()
-            elif btn == BUTTON_PAGE:
+            elif btn in (BUTTON_PAGE, FAST_FORWARD):
                 button_index += 1
                 if (
                     kboard.is_m5stickv
@@ -333,7 +340,7 @@ class MnemonicEditor(Page):
                 ) or (self.mnemonic_length == 12 and button_index == 12):
                     button_index += 12
                 button_index %= 26
-            elif btn == BUTTON_PAGE_PREV:
+            elif btn in (BUTTON_PAGE_PREV, FAST_BACKWARD):
                 button_index -= 1
                 if (
                     kboard.is_m5stickv

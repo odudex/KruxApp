@@ -142,7 +142,7 @@ class CameraEntropy(Page):
         import shannon
         from ..wdt import wdt
         from ..camera import ENTROPY_MODE
-        from ..format import replace_decimal_separator
+        from ..format import replace_decimal_separator, generate_thousands_separator
 
         self.ctx.display.clear()
         self.ctx.display.draw_centered_text(t("TOUCH or ENTER to capture"))

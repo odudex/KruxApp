@@ -36,7 +36,14 @@ from ..display import (
     FONT_WIDTH,
 )
 from ..camera import BINARY_GRID_MODE
-from ..input import BUTTON_ENTER, BUTTON_PAGE, BUTTON_PAGE_PREV, BUTTON_TOUCH
+from ..input import (
+    BUTTON_ENTER,
+    BUTTON_PAGE,
+    BUTTON_PAGE_PREV,
+    BUTTON_TOUCH,
+    FAST_FORWARD,
+    FAST_BACKWARD,
+)
 from ..bip39 import entropy_checksum
 from ..kboard import kboard
 
@@ -248,7 +255,7 @@ class TinySeed(Page):
 
     def _map_keys_array(self):
         """Maps an array of regions for keys to be placed in"""
-        if self.ctx.input.touch is not None:
+        if kboard.has_touchscreen:
             self.ctx.input.touch.x_regions = [
                 self.x_offset + i * self.x_pad for i in range(13)
             ]
@@ -310,7 +317,7 @@ class TinySeed(Page):
                 return TS_LAST_BIT_NO_CS if page == 0 else TS_LAST_BIT_24W_CS
             return TS_LAST_BIT_12W_CS
 
-        if btn == BUTTON_PAGE:
+        if btn in (BUTTON_PAGE, FAST_FORWARD):
             if index >= TS_GO_POSITION:
                 index = 0
             elif index >= TS_ESC_END_POSITION:
@@ -319,7 +326,7 @@ class TinySeed(Page):
                 index = TS_ESC_END_POSITION
             else:
                 index += 1
-        elif btn == BUTTON_PAGE_PREV:
+        elif btn in (BUTTON_PAGE_PREV, FAST_BACKWARD):
             if index <= 0:
                 index = TS_GO_POSITION
             elif index <= _last_editable_bit():
@@ -367,7 +374,8 @@ class TinySeed(Page):
             self.draw_proceed_menu(t("Go"), t("Esc"), menu_offset, menu_index)
             if self.ctx.input.buttons_active:
                 self._draw_index(index)
-            btn = self.ctx.input.wait_for_button()
+
+            btn = self.ctx.input.wait_for_fastnav_button()
             if btn == BUTTON_TOUCH:
                 btn = BUTTON_ENTER
                 index = self.ctx.input.touch.current_index()

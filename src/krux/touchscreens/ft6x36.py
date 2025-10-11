@@ -30,12 +30,12 @@ from . import Touchscreen
 from ..i2c import i2c_bus
 
 FT_DEVICE_MODE = 0x00
-GEST_ID = 0x01
+# GEST_ID = 0x01
 TD_STATUS = 0x02
 PN_XH = 0x03
 FT_ID_G_MODE = 0xA4
 FT_ID_G_THGROUP = 0x80
-FT_ID_SR_PERIODACTIVE = 0x88
+# FT_ID_SR_PERIODACTIVE = 0x88
 FT6X36_ADDR = 0x38
 
 TOUCH_THRESHOLD = 22  # Default 22
@@ -98,6 +98,7 @@ class FT6X36(Touchscreen):
 
     def trigger_event(self):
         """Called by IRQ handler to set event flag and capture touch point"""
+        print("Event triggered")
         self.event_flag = True
         self.irq_point = self.current_point()
 

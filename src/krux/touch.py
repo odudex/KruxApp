@@ -23,7 +23,6 @@
 
 import time
 
-from krux.touchscreens.ft6x36 import touch_control
 from .krux_settings import Settings
 
 IDLE = 0
@@ -42,7 +41,7 @@ TOUCH_S_PERIOD = 20  # Touch sample period - Min = 10
 class Touch:
     """Touch is a singleton API to interact with touchscreen driver"""
 
-    def __init__(self, width, height, irq_pin=None):
+    def __init__(self, width, height, irq_pin=None, res_pin=None):
         """Touch API init - width and height are in Landscape mode
         For Krux width = max_y, height = max_x
         """
@@ -55,8 +54,18 @@ class Touch:
         self.gesture = None
         self.state = IDLE
         self.width, self.height = width, height
-        self.touch_driver = touch_control
-        self.touch_driver.activate_irq(irq_pin)
+        if res_pin is not None:
+            from .touchscreens.gt911 import touch_control
+
+            self.touch_driver = touch_control
+            self.touch_driver.activate(irq_pin, res_pin)
+        else:
+            # Android Custom
+            from krux.touchscreens.ft6x36 import touch_control
+
+            self.touch_driver = touch_control
+            self.touch_driver.activate_irq(irq_pin)
+
         #self.touch_driver.threshold(Settings().hardware.touch.threshold)
 
     def clear_regions(self):
@@ -283,5 +292,5 @@ class Touch:
         return 1
 
     def current_index(self):
-        """Returns current intex of last touched point"""
+        """Returns current index of last touched point"""
         return self.index

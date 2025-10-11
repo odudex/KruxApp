@@ -79,7 +79,7 @@ class Setting:
         self.attr = attr
         self.default_value = default_value
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, _objtype=None):
         if obj is None:
             return self
         return store.get(obj.namespace, self.attr, self.default_value)
@@ -104,7 +104,7 @@ class CategorySetting(Setting):
         super().__init__(attr, default_value)
         self.categories = categories
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, _objtype=None):
         if obj is None:
             return self
 
@@ -122,7 +122,7 @@ class LinkedCategorySetting(CategorySetting):
         self.linked_setting = linked_setting
         self.conditions = [fn for fn in args if callable(fn)]
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, _objtype=None):
         if obj is None:
             return self
 
@@ -146,7 +146,7 @@ class NumberSetting(Setting):
         self.numtype = numtype
         self.value_range = value_range
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, _objtype=None):
         if obj is None:
             return self
 

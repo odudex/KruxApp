@@ -23,7 +23,7 @@ import board
 import time
 from . import Page
 from ..display import FONT_HEIGHT, MINIMAL_PADDING, BOTTOM_LINE
-from ..input import PRESSED
+from ..buttons import PRESSED
 from ..themes import theme
 from ..qr import QRPartParser, FORMAT_UR
 from ..wdt import wdt
@@ -138,7 +138,17 @@ class QRCodeCapture(Page):
 
         # Flush events ocurred while loading camera
         self.ctx.input.reset_ios_state()
+
         # Android Custom
+        # start_time = time.ticks_ms()
+        # self.ctx.display.clear()
+        # offset_y = (
+        #     MINIMAL_PADDING if not kboard.is_amigo else BOTTOM_LINE - FONT_HEIGHT * 2
+        # )
+        # title_lines = self.ctx.display.draw_hcentered_text(
+        #     t("Press PAGE to toggle mode"), offset_y
+        # )
+        # self.ctx.display.to_landscape()
         while True:
             wdt.feed()
 
@@ -148,14 +158,17 @@ class QRCodeCapture(Page):
                 break
 
             # Anti-glare / zoom / normal mode
-            if self.ctx.input.page_event():
+            page_prev_event = self.ctx.input.page_prev_event()
+            if self.ctx.input.page_event() or (kboard.is_yahboom and page_prev_event):
                 if self.ctx.camera.has_antiglare():
                     self.anti_glare_control()
                 else:
                     break
 
-            # Exit the capture loop with PAGE_PREV or TOUCH
-            if self.ctx.input.page_prev_event() or self.ctx.input.touch_event():
+            # Exit the capture loop with TOUCH or PAGE_PREV (except yahboom)
+            if self.ctx.input.touch_event() or (
+                not kboard.is_yahboom and page_prev_event
+            ):
                 break
 
             if new_part is not None and new_part != previous_part:
