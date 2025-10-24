@@ -23,6 +23,7 @@
 
 import time
 
+from .kboard import kboard
 from .krux_settings import Settings
 
 IDLE = 0
@@ -54,7 +55,12 @@ class Touch:
         self.gesture = None
         self.state = IDLE
         self.width, self.height = width, height
-        if res_pin is not None:
+        if kboard.is_embed_fire:
+            from .touchscreens.cst816 import touch_control
+
+            self.touch_driver = touch_control
+            self.touch_driver.activate(irq_pin)
+        elif res_pin is not None:
             from .touchscreens.gt911 import touch_control
 
             self.touch_driver = touch_control
@@ -66,6 +72,7 @@ class Touch:
             self.touch_driver = touch_control
             self.touch_driver.activate_irq(irq_pin)
 
+        # Custom for Android
         #self.touch_driver.threshold(Settings().hardware.touch.threshold)
 
     def clear_regions(self):
@@ -75,12 +82,14 @@ class Touch:
 
     def add_y_delimiter(self, region):
         """Adds a y button delimiter to be mapped as a array by touchscreen"""
+        # Custom for Android
         # if region > self.width:
         #     raise ValueError("Touch region added outside display area")
         self.y_regions.append(region)
 
     def add_x_delimiter(self, region):
         """Adds a x button delimiter to be mapped as a array by touchscreen"""
+        # Custom for Android
         # if region > self.height:
         #     raise ValueError("Touch region added outside display area")
         self.x_regions.append(region)
