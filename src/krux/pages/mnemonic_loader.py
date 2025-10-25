@@ -29,6 +29,9 @@ from . import (
     MENU_CONTINUE,
     ESC_KEY,
     LETTERS,
+    BASE_DEC_SUFFIX,
+    BASE_HEX_SUFFIX,
+    BASE_OCT_SUFFIX,
 )
 from ..display import BOTTOM_PROMPT_LINE
 from ..qr import FORMAT_UR
